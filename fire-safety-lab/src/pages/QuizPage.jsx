@@ -182,6 +182,7 @@ export default function QuizPage() {
     if (!quiz || finished) return
     const onKey = e => {
       if (e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+      if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return
       const key = e.key.toUpperCase()
       const pos = ['1', '2', '3'].indexOf(key) >= 0 ? ['1', '2', '3'].indexOf(key) : LETTERS.indexOf(key)
       if (pos >= 0 && pos < quiz.order.length && !answered) answer(quiz.order[pos])

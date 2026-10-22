@@ -66,12 +66,13 @@ export const MISSIONS = [
       config.material === 'retardant' && frames.every(f => f.stats.corridorSmoke <= 0.35),
   },
   {
-    id: 'safety-95',
+    id: 'safety-80',
     icon: '🛡️',
-    title: '安全度95点を目指せ',
-    goal: '30分後の総合安全度を95点以上にしよう。',
-    hint: '材料・区画・扉・避難経路・排煙をすべて見直してみましょう。',
-    check: (config, frames) => last(frames).stats.safety >= 95,
+    title: '燃えやすい内装でも安全に',
+    goal: '内装が「可燃材料」のまま、30分後の総合安全度を80点以上にしよう。',
+    hint: '材料以外の対策（防火区画・防火戸・避難経路・排煙）を総動員してみましょう。',
+    start: { material: 'combustible' },
+    check: (config, frames) => config.material === 'combustible' && last(frames).stats.safety >= 80,
   },
   {
     id: 'worst',

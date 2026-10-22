@@ -33,21 +33,21 @@ export const MEMBERS = {
     label: '鉄骨柱＋耐火被覆',
     short: '鉄骨・被覆',
     description: 'ロックウールなどの耐火被覆で鋼材を包み、熱の伝わりを遅らせます。',
-    param: { key: 'coating', label: '被覆の厚さ', unit: 'mm', min: 5, max: 60, step: 5, default: 25 },
+    param: { key: 'coating', label: '被覆の厚さ', unit: 'mm', min: 5, max: 60, step: 5, default: 10 },
   },
   rc: {
     id: 'rc',
     label: '鉄筋コンクリート柱',
     short: 'RC',
     description: 'コンクリートが鉄筋を覆う「かぶり」が断熱層となり、鉄筋の温度上昇を抑えます。',
-    param: { key: 'cover', label: 'かぶり厚さ', unit: 'mm', min: 20, max: 60, step: 5, default: 40 },
+    param: { key: 'cover', label: 'かぶり厚さ', unit: 'mm', min: 20, max: 60, step: 5, default: 25 },
   },
   wood: {
     id: 'wood',
     label: '木造柱（集成材）',
     short: '木造',
     description: '木材は表面が炭化して断熱層となり、内部はなかなか燃えません（燃えしろ設計）。',
-    param: { key: 'size', label: '柱の断面寸法', unit: 'mm角', min: 120, max: 450, step: 15, default: 300 },
+    param: { key: 'size', label: '柱の断面寸法', unit: 'mm角', min: 120, max: 450, step: 15, default: 150 },
   },
 }
 export const MEMBER_ORDER = ['steel', 'coated', 'rc', 'wood']

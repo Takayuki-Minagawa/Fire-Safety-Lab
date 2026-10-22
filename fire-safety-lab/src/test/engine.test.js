@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { DEFAULT_CONFIG, MAX_STEP, ROOMS, simulate, safetyScore } from '../lib/fireSim'
-import { MAX_MINUTES, fireTemperature, simulateMember } from '../lib/memberSim'
+import { MAX_MINUTES, MEMBERS, fireTemperature, simulateMember } from '../lib/memberSim'
 import { MISSIONS } from '../data/missions'
 import { QUESTIONS, buildRound, rankFor } from '../data/quiz'
 import { CASES } from '../data/cases'
@@ -65,9 +65,14 @@ describe('missions', () => {
     'blocked-door': { ...base, material: 'retardant', compartment: true, fireDoor: 'blocked', roomDoors: 'open' },
     'one-way': { ...base, twoWay: false, material: 'quasi', roomDoors: 'closed' },
     'smoke-control': { ...base, material: 'retardant', compartment: true, fireDoor: 'auto', roomDoors: 'open', exhaust: true },
-    'safety-95': { ...base, material: 'noncombustible', roomDoors: 'closed' },
+    'safety-80': { ...base, material: 'combustible', compartment: true, fireDoor: 'auto', twoWay: true, exhaust: true },
     worst: { ...base, material: 'combustible', compartment: false, roomDoors: 'open', twoWay: false },
   }
+
+  it('clears only the observation mission with the default settings', () => {
+    const frames = simulate(base).frames
+    expect(MISSIONS.filter(m => m.check(base, frames)).map(m => m.id)).toEqual(['observe'])
+  })
 
   it.each(MISSIONS.map(m => [m.id, m]))('%s is achievable', (id, mission) => {
     const config = solutions[id]
@@ -104,6 +109,12 @@ describe('member fire resistance model', () => {
     expect(t('coated', 40)).toBeGreaterThan(t('coated', 20))
     expect(t('rc', 50)).toBeGreaterThan(t('rc', 30))
     expect(t('wood', 300)).toBeGreaterThan(t('wood', 150))
+  })
+
+  it('starts the member challenges below their targets', () => {
+    expect(simulateMember('coated', MEMBERS.coated.param.default).failTime).toBeLessThan(60)
+    expect(simulateMember('wood', MEMBERS.wood.param.default).failTime).toBeLessThan(45)
+    expect(simulateMember('rc', MEMBERS.rc.param.default).failTime).toBeLessThan(120)
   })
 
   it('makes the member challenges reachable', () => {

@@ -8,7 +8,7 @@ import {
   explainResult, formatTime, roomNumber, safetyLevel, simulate,
 } from '../lib/fireSim'
 import { usePlayback } from '../lib/hooks'
-import { useProgress } from '../lib/progress'
+import { countMissions, useProgress } from '../lib/progress'
 import { MISSIONS } from '../data/missions'
 
 /** URL の ?preset= で開いたときの初期条件 */
@@ -51,10 +51,12 @@ export default function FireSimulator({ preset }) {
 
   // 最後まで再生したら、ミッションの達成判定を行う
   const handleEnd = () => {
+    // 同じ条件の再生は「試した回数」に数えない（ミッション判定は毎回行う）
     const key = JSON.stringify(config)
-    if (lastRunKey.current === key) return
-    lastRunKey.current = key
-    completeRun()
+    if (lastRunKey.current !== key) {
+      lastRunKey.current = key
+      completeRun()
+    }
     const achieved = MISSIONS.filter(m => m.check(config, sim.frames))
     for (const m of achieved) {
       if (!progress.missions[m.id]) {
@@ -148,7 +150,7 @@ export default function FireSimulator({ preset }) {
           icon="🎯"
           aside={
             <span className="text-xs font-bold text-evac-700 bg-evac-50 rounded-full px-2 py-0.5">
-              {Object.values(progress.missions).filter(Boolean).length} / {MISSIONS.length} クリア
+              {countMissions(progress)} / {MISSIONS.length} クリア
             </span>
           }
         >

@@ -108,7 +108,7 @@ function CrossSection({ memberId, value, point }) {
 }
 
 export default function MemberSimulator() {
-  const { recordMember, notify } = useProgress()
+  const { progress, recordMember, notify } = useProgress()
   const [memberId, setMemberId] = useState('coated')
   const [values, setValues] = useState(() =>
     Object.fromEntries(MEMBER_ORDER.map(id => [id, MEMBERS[id].param?.default ?? 0])),
@@ -122,9 +122,10 @@ export default function MemberSimulator() {
   const minutes = failTime ?? MAX_MINUTES
 
   const handleEnd = () => {
+    const best = progress.memberRuns[memberId] ?? 0
     recordMember(memberId, minutes)
     const ch = CHALLENGES.find(c => c.id === memberId)
-    if (ch && minutes >= ch.target) {
+    if (ch && minutes >= ch.target && best < ch.target) {
       notify({ icon: '🏗️', title: 'チャレンジ達成！', text: `${member.label}：${formatMinutes(failTime)}耐えました` })
     }
   }

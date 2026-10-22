@@ -56,6 +56,15 @@ describe('SimulationPage', () => {
     expect(screen.getByText('ミッション達成：まずは観察')).toBeInTheDocument()
   })
 
+  it('judges a mission even when the same conditions are replayed', () => {
+    renderWithRouter('/simulation')
+    const slider = screen.getByRole('slider', { name: '火災発生からの経過時間' })
+    fireEvent.change(slider, { target: { value: String(MAX_STEP) } })
+    fireEvent.click(screen.getByRole('button', { name: '危険な条件を知る' }))
+    fireEvent.change(slider, { target: { value: String(MAX_STEP) } })
+    expect(screen.getByText(/まだ達成できていません/)).toBeInTheDocument()
+  })
+
   it('switches to the member fire resistance simulator', () => {
     renderWithRouter('/simulation?mode=member')
     expect(screen.getByText('耐火試験のシミュレーション')).toBeInTheDocument()
