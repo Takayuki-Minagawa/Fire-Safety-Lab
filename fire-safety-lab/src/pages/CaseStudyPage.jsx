@@ -1,182 +1,166 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { PageHeader, Meter, PlaybackBar } from '../components/ui'
+import FloorPlan from '../components/FloorPlan'
+import { CASES } from '../data/cases'
+import { MAX_STEP, formatTime, safetyLevel, simulate } from '../lib/fireSim'
+import { usePageTitle, usePlayback } from '../lib/hooks'
+import { useProgress } from '../lib/progress'
 
-const cases = [
-  {
-    id: 'compartment',
-    title: '防火区画の有無',
-    description: '同じ建物で防火区画がある場合とない場合の火災拡大を比較します。',
-    caseA: {
-      label: '区画あり',
-      conditions: ['床面積500㎡を防火壁で区画', '防火戸を各区画に設置', '壁：耐火1時間'],
-      fireSpread: 15,
-      evacuationTime: 90,
-      safetyScore: 85,
-      smoke: 20,
-      description: '火災は出火区画内に留まり、隣接区画への延焼が防がれます。避難者は安全な区画を通って避難できます。',
-    },
-    caseB: {
-      label: '区画なし',
-      conditions: ['床面積500㎡をワンフロアで使用', '間仕切りは一般建材のみ', '防火戸なし'],
-      fireSpread: 80,
-      evacuationTime: 30,
-      safetyScore: 25,
-      smoke: 75,
-      description: '火災はフロア全体に急速に拡大し、煙も短時間で充満します。避難時間が大幅に短縮されます。',
-    },
-  },
-  {
-    id: 'material',
-    title: '内装材料の違い',
-    description: '不燃材料と可燃性の高い内装を使った場合の違いを比較します。',
-    caseA: {
-      label: '不燃材料中心',
-      conditions: ['壁・天井：石膏ボード（不燃）', '床：コンクリート直仕上げ', 'カーテン：防炎品'],
-      fireSpread: 20,
-      evacuationTime: 75,
-      safetyScore: 80,
-      smoke: 15,
-      description: '内装材が燃えにくいため、フラッシュオーバーまでの時間が長く、避難に十分な時間があります。煙の発生も少なくなります。',
-    },
-    caseB: {
-      label: '可燃性の高い内装',
-      conditions: ['壁：木質パネル（可燃）', '天井：吸音材（難燃未満）', 'カーテン：一般繊維'],
-      fireSpread: 85,
-      evacuationTime: 20,
-      safetyScore: 15,
-      smoke: 85,
-      description: '内装材が燃え広がりやすく、フラッシュオーバーが早期に発生します。大量の煙と有毒ガスが発生し、避難が極めて困難になります。',
-    },
-  },
-  {
-    id: 'evacuation',
-    title: '避難経路の計画',
-    description: '明快な避難経路と複雑な避難経路の違いを比較します。',
-    caseA: {
-      label: '明快な避難経路',
-      conditions: ['2方向避難を確保', '廊下幅1.8m以上', '避難階段2箇所（両端）', '誘導灯・非常照明完備'],
-      fireSpread: 50,
-      evacuationTime: 85,
-      safetyScore: 90,
-      smoke: 40,
-      description: 'どの位置からでも2方向に避難可能。広い廊下と明確な誘導により、パニック時でもスムーズに避難できます。',
-    },
-    caseB: {
-      label: '複雑な避難経路',
-      conditions: ['1方向のみの避難路', '廊下幅1.2m（最低限）', '避難階段1箇所（片端）', '誘導灯不十分'],
-      fireSpread: 50,
-      evacuationTime: 35,
-      safetyScore: 30,
-      smoke: 60,
-      description: '避難路が限られるため、火災位置によっては逃げ道が塞がれます。廊下が狭く混雑し、避難に時間がかかります。',
-    },
-  },
-]
-
-function SafetyBar({ value, label, color }) {
-  return (
-    <div className="mb-3">
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-600">{label}</span>
-        <span className="font-medium" style={{ color }}>{value}%</span>
-      </div>
-      <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: color }}
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function CaseCard({ data, variant }) {
-  const isSafe = variant === 'safe'
-  const borderColor = isSafe ? 'border-teal-200' : 'border-red-200'
-  const bgColor = isSafe ? 'bg-teal-50/50' : 'bg-red-50/50'
-  const badgeColor = isSafe ? 'bg-teal-100 text-teal-700' : 'bg-red-100 text-red-700'
+/** A・B どちらか一方の結果カード */
+function CaseColumn({ side, data, sim, step, winner }) {
+  const frame = sim.frames[step]
+  const { stats } = frame
+  const level = safetyLevel(stats.safety)
+  const isA = side === 'A'
 
   return (
-    <div className={`${bgColor} ${borderColor} border rounded-xl p-5`}>
-      <div className="flex items-center gap-2 mb-4">
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
-          {data.label}
+    <div className={`bg-white rounded-2xl border-2 p-4 md:p-5 transition-colors ${winner ? 'border-evac-500/60' : 'border-slate-200/80'}`}>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-8 h-8 rounded-lg font-black text-white flex items-center justify-center ${isA ? 'bg-evac-600' : 'bg-fire-600'}`}>{side}</span>
+          <h3 className="font-black text-ink-900">{data.label}</h3>
+        </div>
+        <span className={`text-xs font-black rounded-full px-2.5 py-1 ${level.bg} ${level.text}`}>
+          安全度 <span className="tabular-nums">{stats.safety}</span>
         </span>
       </div>
 
-      <ul className="text-xs text-gray-600 space-y-1 mb-4">
-        {data.conditions.map((c, i) => (
-          <li key={i} className="flex items-start gap-1.5">
-            <span className="text-gray-400 mt-0.5">•</span>
-            {c}
-          </li>
+      <ul className="flex flex-wrap gap-1.5 mb-3">
+        {data.conditions.map(c => (
+          <li key={c} className="text-[11px] bg-slate-100 text-slate-600 rounded-md px-2 py-0.5">{c}</li>
         ))}
       </ul>
 
-      <SafetyBar value={data.safetyScore} label="安全度" color={data.safetyScore > 50 ? '#0d9488' : '#dc2626'} />
-      <SafetyBar value={100 - data.fireSpread} label="延焼抑制" color={data.fireSpread < 50 ? '#0d9488' : '#dc2626'} />
-      <SafetyBar value={data.evacuationTime} label="避難余裕" color={data.evacuationTime > 50 ? '#0d9488' : '#dc2626'} />
-      <SafetyBar value={100 - data.smoke} label="視界確保" color={data.smoke < 50 ? '#0d9488' : '#dc2626'} />
+      <div className="rounded-xl bg-slate-100/70 p-1.5">
+        <FloorPlan sim={sim} frame={frame} compact title={`${side}：${data.label}の平面図`} />
+      </div>
 
-      <p className="text-xs text-gray-600 mt-4 leading-relaxed bg-white/80 p-3 rounded-lg">
-        {data.description}
-      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4">
+        <Meter label="延焼面積" value={stats.burnRatio} color="#f2641f" />
+        <Meter label="廊下の煙" value={stats.corridorSmoke} color="#64748b" />
+        <Meter label="避難完了" value={stats.evacuated / stats.total} display={`${stats.evacuated}/${stats.total}人`} color="#14a38b" />
+        <div className="text-xs">
+          <p className="text-slate-600 font-medium mb-1">要救助</p>
+          <p className={`text-lg font-black tabular-nums ${stats.trapped ? 'text-danger-600' : 'text-slate-300'}`}>{stats.trapped}人</p>
+        </div>
+      </div>
     </div>
   )
 }
 
 export default function CaseStudyPage() {
-  const [activeCase, setActiveCase] = useState(cases[0].id)
-  const currentCase = cases.find(c => c.id === activeCase)
+  usePageTitle('事例比較')
+  const { progress, viewCase } = useProgress()
+  const [activeId, setActiveId] = useState(CASES[0].id)
+  const [showAnswer, setShowAnswer] = useState(false)
+  const current = CASES.find(c => c.id === activeId)
+
+  const sims = useMemo(() => ({ a: simulate(current.a.config), b: simulate(current.b.config) }), [current])
+  const playback = usePlayback(MAX_STEP, { onEnd: () => viewCase(activeId) })
+  const step = playback.step
+  const safetyA = sims.a.frames[step].stats.safety
+  const safetyB = sims.b.frames[step].stats.safety
+
+  const select = id => {
+    setActiveId(id)
+    setShowAnswer(false)
+    playback.restart()
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">事例比較</h1>
-        <p className="text-gray-500 text-sm mb-8">
-          条件の違いによる安全性の変化を比較してみましょう
-        </p>
+    <div>
+      <PageHeader
+        icon="⚖️"
+        eyebrow="CASE STUDY"
+        title="事例比較"
+        description="条件が1つだけ違う2つの計画を、同じ時刻で並べて比べます。再生して、どこで差がつくのかを観察しましょう。"
+      />
 
-        {/* Case selector */}
-        <div className="flex flex-wrap gap-3 mb-8">
-          {cases.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCase(c.id)}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeCase === c.id
-                  ? 'bg-gray-800 text-white shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {c.title}
-            </button>
-          ))}
+      <div className="max-w-6xl mx-auto px-4 -mt-6 pb-16 space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="tablist" aria-label="比較する事例">
+          {CASES.map((c, i) => {
+            const active = c.id === activeId
+            return (
+              <button
+                key={c.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => select(c.id)}
+                className={`relative text-left rounded-2xl p-4 border transition-all ${
+                  active ? 'bg-ink-900 text-white border-ink-900 shadow-lg' : 'bg-white text-ink-900 border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                }`}
+              >
+                <span className={`text-[10px] font-black tracking-widest ${active ? 'text-fire-400' : 'text-slate-400'}`}>CASE {i + 1}</span>
+                <span className="flex items-center gap-2 font-black mt-0.5">
+                  <span aria-hidden="true" className="text-xl">{c.icon}</span>
+                  {c.title}
+                </span>
+                {progress.viewedCases[c.id] && (
+                  <span className="absolute top-3 right-3 text-[10px] font-bold bg-evac-500 text-white rounded-full px-2 py-0.5">観察済み</span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
-        <motion.div
-          key={activeCase}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <p className="text-sm text-gray-600 mb-6">{currentCase.description}</p>
+        <AnimatePresence mode="wait">
+          <motion.div key={activeId} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
+              <p className="text-sm text-slate-700">{current.description}</p>
+              <PlaybackBar playback={playback} max={MAX_STEP} formatLabel={s => `${formatTime(s)} / 30分`} />
+              {/* 安全度の差を左右のバーで表示 */}
+              <div aria-label="安全度の比較" className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-xs font-bold">
+                <span className="text-evac-700">A {safetyA}</span>
+                <div className="relative h-3 rounded-full bg-slate-100 overflow-hidden flex">
+                  <motion.div className="h-full bg-evac-500" initial={false} animate={{ width: `${(safetyA / Math.max(1, safetyA + safetyB)) * 100}%` }} />
+                  <motion.div className="h-full bg-fire-500 flex-1" />
+                  <span className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white" />
+                </div>
+                <span className="text-fire-700">{safetyB} B</span>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <CaseCard data={currentCase.caseA} variant="safe" />
-            <CaseCard data={currentCase.caseB} variant="danger" />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <CaseColumn side="A" data={current.a} sim={sims.a} step={step} winner={safetyA > safetyB} />
+              <CaseColumn side="B" data={current.b} sim={sims.b} step={step} winner={safetyB > safetyA} />
+            </div>
 
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs text-amber-800">
-              ※ 表示される数値は学習用の目安です。実際の火災は建物の条件・火源・気象条件などにより大きく異なります。
-            </p>
-          </div>
-        </motion.div>
-      </motion.div>
+            <div className="grid md:grid-cols-2 gap-5">
+              <div className="rounded-2xl bg-evac-50 border border-evac-100 p-5">
+                <p className="text-xs font-black tracking-widest text-evac-700 mb-1">TAKEAWAY</p>
+                <p className="font-black text-ink-900 mb-2">比べてわかること</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{current.takeaway}</p>
+              </div>
+              <div className="rounded-2xl bg-white border border-slate-200/80 p-5">
+                <p className="text-xs font-black tracking-widest text-fire-600 mb-1">THINK</p>
+                <p className="font-black text-ink-900 mb-2">考えてみよう</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{current.question}</p>
+                <AnimatePresence initial={false} mode="wait">
+                  {showAnswer ? (
+                    <motion.p key="a" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3 text-sm text-slate-700 bg-fire-50 rounded-lg p-3 leading-relaxed">
+                      {current.answer}
+                    </motion.p>
+                  ) : (
+                    <motion.button key="b" type="button" onClick={() => setShowAnswer(true)} className="mt-3 text-sm font-bold text-fire-600 hover:underline">
+                      考えたら答えを見る →
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                <Link to="/simulation" className="block mt-3 text-xs font-bold text-slate-500 hover:text-fire-600">
+                  🔬 シミュレーションで自分で確かめる →
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        <p className="text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          ※ 数値は学習用の簡易モデルによる目安です。実際の火災は建物の条件・火源・気象条件などにより大きく異なります。
+        </p>
+      </div>
     </div>
   )
 }

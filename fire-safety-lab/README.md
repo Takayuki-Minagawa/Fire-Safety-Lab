@@ -1,16 +1,49 @@
-# React + Vite
+# 防耐火ラボ（Fire Safety Lab）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+火災から建築を守る仕組みを「見る・動かす・比べる・確かめる」で学ぶ、建築学科向けの学習用 Web アプリです。
 
-Currently, two official plugins are available:
+> ⚠ 本アプリは教育用の簡易モデルです。表示される時間・割合・点数は学習用の目安であり、実務設計や法適合判定には使用できません。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 主な機能
 
-## React Compiler
+| ページ | 内容 |
+| --- | --- |
+| トップ | スクロールに合わせて「出火 → 煙 → 防火区画 → 避難」が進む断面図ストーリー、学習ロードマップと進み具合 |
+| 学習解説 | 防火・耐火・材料・煙と避難・建築計画の5テーマ×4枚のカード、テーマごとの図解、「防火」と「耐火」の違い、検索できる用語集 |
+| シミュレーション（延焼・煙・避難） | 出火場所・内装材料・防火区画／防火戸・居室の扉・避難経路・排煙を変えると、火・煙・在館者の動きと安全度が即時に変化。タイムスライダーで時間を自由に行き来でき、8つのミッションと結果の比較表つき |
+| シミュレーション（部材の耐火） | 標準加熱曲線（ISO 834）で鉄骨（被覆なし／被覆あり）・RC・木造（燃えしろ）の柱を加熱し、耐火時間の目安を表示 |
+| 事例比較 | 「区画の有無」「内装材料」「避難経路」の A/B を同じ時刻で並べて再生・比較 |
+| クイズ | 3択・○×・「どっちが有利？」の16問からランダム出題（選択肢もシャッフル）。コンボ・称号・ふりかえり・復習リンクつき |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+学習の進み具合とバッジはブラウザの `localStorage` に保存されます（サーバー送信なし）。
 
-## Expanding the ESLint configuration
+## 開発
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm ci        # 依存関係のインストール
+npm run dev   # 開発サーバー
+npm test      # テスト（Vitest）
+npm run lint  # ESLint
+npm run build # 本番ビルド（dist/）
+```
+
+`main` ブランチへの push で GitHub Actions がテスト・ビルドし、GitHub Pages にデプロイします。
+
+## ディレクトリ構成
+
+```
+src/
+  lib/
+    fireSim.js     延焼・煙・避難のセルオートマトン（決定論的・全ステップを事前計算）
+    memberSim.js   部材の耐火時間モデル（標準加熱曲線＋一次遅れ／炭化速度）
+    progress.js    学習の進み具合・バッジ
+    hooks.js       再生制御（usePlayback）・ページタイトル
+  data/            学習カード・用語集・クイズ・事例・ミッション
+  components/      平面図・グラフ・各シミュレーター・共通UI
+  pages/           各ページ
+  test/            テスト
+```
+
+## 技術スタック
+
+React 19 / Vite / Tailwind CSS v4 / Framer Motion / React Router（HashRouter）。図やグラフはすべて SVG で描画しています。

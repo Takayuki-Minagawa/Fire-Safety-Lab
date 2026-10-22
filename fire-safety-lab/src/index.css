@@ -1,16 +1,137 @@
 @import "tailwindcss";
 
+/*
+ * デザイントークン
+ *   火 = 赤橙(fire) / 煙 = グレー(smoke) / 避難 = 緑青(evac) / 危険 = 濃赤(danger)
+ *   図面 = ネイビー(ink)
+ */
+@theme {
+  --font-sans: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-fire-50: #fff5ed;
+  --color-fire-100: #ffe7d4;
+  --color-fire-200: #ffcaa8;
+  --color-fire-400: #fb8a4a;
+  --color-fire-500: #f2641f;
+  --color-fire-600: #dc4a12;
+  --color-fire-700: #b53710;
+  --color-evac-50: #effcf9;
+  --color-evac-100: #c9f5ec;
+  --color-evac-500: #14a38b;
+  --color-evac-600: #0d8573;
+  --color-evac-700: #0f6a5d;
+  --color-danger-600: #b91c1c;
+  --color-danger-700: #991b1b;
+  --color-ink-700: #1e3a5f;
+  --color-ink-800: #172e4b;
+  --color-ink-900: #0f2036;
+  --color-ink-950: #0a1626;
+  --color-paper: #fbfaf7;
+}
+
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  font-family: 'Noto Sans JP', 'Inter', system-ui, sans-serif;
-  background-color: #f9fafb;
+  font-family: var(--font-sans);
+  background-color: #f6f7f9;
   color: #1f2937;
+  font-feature-settings: 'palt';
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100svh;
+}
+
+/* キーボード操作時のフォーカスを見やすく */
+:focus-visible {
+  outline: 3px solid #f2641f;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 図面風の方眼背景 */
+.bg-blueprint {
+  background-color: var(--color-ink-900);
+  background-image:
+    linear-gradient(rgba(148, 197, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(148, 197, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 197, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px, 64px 64px, 16px 16px, 16px 16px;
+}
+
+.bg-grid-light {
+  background-image:
+    linear-gradient(rgba(30, 58, 95, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 95, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* 炎のゆらぎ */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.82; }
+  70% { opacity: 0.94; }
+}
+.flame-flicker {
+  animation: flicker 0.9s ease-in-out infinite;
+}
+
+@keyframes rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.55; }
+  100% { transform: translateY(-14px) scale(1.4); opacity: 0; }
+}
+.smoke-rise {
+  animation: rise 2.4s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.pulse-ring {
+  animation: pulse-ring 1.6s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* range スライダーの見た目 */
+input[type='range'].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--fill, #f2641f) 0%, var(--fill, #f2641f) var(--pct, 0%), #e2e8f0 var(--pct, 0%), #e2e8f0 100%);
+  cursor: pointer;
+}
+input[type='range'].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--fill, #f2641f);
+  box-shadow: 0 1px 4px rgba(15, 32, 54, 0.25);
+}
+input[type='range'].slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--fill, #f2641f);
+  box-shadow: 0 1px 4px rgba(15, 32, 54, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .flame-flicker, .smoke-rise, .pulse-ring { animation: none; }
 }
